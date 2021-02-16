@@ -1,0 +1,27 @@
+{
+    "name": "wenster/raffle-design",
+    "description": "Clock every day and Carve up cash",
+    "authors": [
+        {
+            "name": "JasonWoWo",
+            "email": "wenster_1900@163.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0",
+        "ext-json": "*",
+        "illuminate/support": "^8.22",
+        "illuminate/console": "^8.22"
+    },
+    "require-dev": {
+        "illuminate/database": "^8.22",
+        "phpunit/phpunit": "~4.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Happy\\Clock\\": "src/"
+        }
+    },
+    "prefer-stable": true
+}
