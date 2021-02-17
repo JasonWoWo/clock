@@ -3,40 +3,38 @@
 ![打卡活动流程图.jpeg](https://cdn.nlark.com/yuque/0/2021/jpeg/1132376/1613353472945-1056ac1a-796f-4613-beca-9b219355314f.jpeg#align=left&display=inline&height=919&margin=%5Bobject%20Object%5D&name=%E6%89%93%E5%8D%A1%E6%B4%BB%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%9B%BE.jpeg&originHeight=919&originWidth=411&size=32523&status=done&style=none&width=411)
 ### 2.包安装
 #### 2.1 项目composer更新
-2.1.1 edit `composer.json` file
+
+2.1.1 execute composer 
+
 ```bash
-"repositories": [
-        {
-            "type" : "path",
-            "url": "/Users/wangxionghao/Server/package/clock"
-        }
-]
-```
-2.1.2 execute composer 
-```bash
-composer require "wenster/raffle-design": "dev-master"
+composer require "olaf/clock": "dev-master"
 ```
 #### 2.2 Provider配置文件
      2.2.1 Open your `config/app.php` and add the following to the `providers` array:
+ 
 ```bash
 Happy\Clock\ClockServiceProvider::class
 ```
 2.1.2 Run the command below to publish the package config file `config/clock.php`
+
 ```bash
 php artisan vendor:publish --provider="Happy\Clock\ClockServiceProvider"
 ```
 #### 2.3 Clock配置更新
 2.3.1 检测项目Migrate状态
+
 ```bash
 ➜ php artisan migrate:status
 Migration table not found.
 ```
 2.3.2 若未初始话，需要先初始化Migrate服务，否则，跳过该步骤
+
 ```bash
 ➜ php artisan migrate:install
 Migration table created successfully.
 ```
 2.3.3 再次检测Migrate状态
+
 ```bash
 ➜ php artisan migrate:status
 +------+------------------------------------------------+-------+
