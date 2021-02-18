@@ -11,11 +11,11 @@
     "require": {
         "php": ">=7.0",
         "ext-json": "*",
-        "illuminate/support": "^8.22",
-        "illuminate/console": "^8.22"
+        "illuminate/support": "~5.0",
+        "illuminate/console": "~5.0"
     },
     "require-dev": {
-        "illuminate/database": "^8.22",
+        "illuminate/database": "~5.0",
         "phpunit/phpunit": "~4.1"
     },
     "autoload": {
