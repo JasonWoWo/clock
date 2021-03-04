@@ -62,4 +62,24 @@ class ClockCenter
     {
         return $this->clockService->summaryClock($uid, $extra);
     }
+
+    /**
+     * STEP-THREE 1 获取达人列表
+     * @return array
+     */
+    public function topClock()
+    {
+        return $this->clockService->getTopUser();
+    }
+
+    /**
+     * STEP-THREE 2 获取打卡榜单
+     * @param $page
+     * @param $limit
+     * @return array
+     */
+    public function recordClock($page = 0, $limit = 10)
+    {
+        return $this->clockService->getTopRecord($page, $limit);
+    }
 }

@@ -33,6 +33,7 @@ class ClockServiceProvider extends ServiceProvider
         // Register commands
         $this->commands('command.clock.migration');
         $this->commands('command.clock.redInit');
+        $this->commands('command.clock.redPush');
 
         // Register blade directives
 //        $this->bladeDirectives();

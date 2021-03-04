@@ -6,6 +6,7 @@ namespace Happy\Clock\Commands;
 
 use Carbon\Carbon;
 use Happy\Clock\Models\PayClockDay;
+use Happy\Clock\Models\PayClockUser;
 use Happy\Clock\Service\ClockService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -106,6 +107,13 @@ class ClockRedInit extends Command
         $initMoney = Config::get('clock.participate_clock_money');
         $basicClockMoney = empty($initMoney) ? 1 : $initMoney;
         $top = ['uid' => $uid, 'money' => $topLuckyMoney + $basicClockMoney];
+        $clockUserEntity = PayClockUser::query()->where('uid', $uid)
+            ->select(['uid', 'nickname', 'mobile'])->first();
+        if (!is_null($clockUserEntity)) {
+            $clockUserItem = $clockUserEntity->toArray();
+            $top['nickname'] = $clockUserItem['nickname'];
+            $top['mobile'] = $clockUserItem['mobile'];
+        }
         $topKey = $clockService->topUserClockKey($clockDayFormat);
         Cache::add($topKey, json_encode($top), 7*24*3600);
 

@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Log;
 
 class ClockService extends BaseService
 {
+    // 一天的时间戳
+    const DAY_TIMESTAMP = 86400;
 
     /**
      * 业务服务定义的系统时间
@@ -27,8 +29,7 @@ class ClockService extends BaseService
 
     public function __construct()
     {
-        $this->systemCurrentTimestamp = 1613434254;
-//        $this->systemCurrentTimestamp = Carbon::now()->timestamp;
+        $this->systemCurrentTimestamp = Carbon::now()->timestamp;
     }
 
     /**
@@ -121,6 +122,11 @@ class ClockService extends BaseService
         return $this->pipeline();
     }
 
+    /**
+     * 用户当日是否弹窗
+     * @param $uid
+     * @return bool
+     */
     private function checkUserAlert($uid)
     {
         $key = $this->getClockUserAlertKey($uid);
@@ -1085,6 +1091,115 @@ class ClockService extends BaseService
             $redInitProportion['proportion'] = $setting['money_proportion'] / 100;
         }
         return $redInitProportion;
+    }
+
+    public function getTopRecord($page = 0, $limit = 10)
+    {
+        $offset = $page * $limit;
+        $tops = [
+            'total_counts' => 0,
+            'items' => []
+        ];
+        $recordQueryBuilder = PayClockUser::query()->where('mobile', '!=', '');
+        $tops['total_counts'] = $recordQueryBuilder->count('*');
+        if (empty($tops['total_counts'])) {
+            $this->data['talent'] = $tops;
+            return $this->pipeline();
+        }
+        $recordEntities = PayClockUser::query()->where('mobile', '!=', '')
+            ->limit($limit)->offset($offset)->select(['mobile', 'clock_day_num as clockDayCount', 'income_money as incomeMoney'])
+            ->orderBy('income_money', 'desc')->get();
+        if (is_null($recordEntities)) {
+            $this->data['talent'] = $tops;
+            return $this->pipeline();
+        }
+        $recordItem = $recordEntities->toArray();
+        array_walk($recordItem, function (&$item) {
+            $item['mobile'] = $this->saltTel($item['mobile']);
+        });
+        $tops['items'] = $recordItem;
+        $this->data['records'] = $tops;
+        return $this->pipeline();
+    }
+
+    /**
+     * 获取打卡达人信息列表
+     * @return array|mixed
+     */
+    public function getTopUser()
+    {
+        $time = date('Y-m-d', $this->systemCurrentTimestamp);
+        $today = strtotime($time);
+        $topKey = Config::get('clock.prefix_top_key') . $today;
+        if (Cache::has($topKey)) {
+            $this->data['talent'] = Cache::get($topKey);
+            return $this->pipeline();
+        }
+        $yesterday = strtotime(date('Y-m-d', $this->systemCurrentTimestamp - self::DAY_TIMESTAMP));
+        $topInfo = [
+            'persistent' => ['type' => 1, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => ''],
+            'lucky' => ['type' => 2, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => ''],
+            'early' => ['type' => 3, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => ''],
+        ];
+        // todo 毅力达人
+        $persistentTopEntity = PayClockUser::query()->where('long_day_num', 'gt', 0)
+            ->orderBy('long_day_num', 'desc')->orderBy('update_time', 'desc')
+            ->select(['uid', 'long_day_num', 'nickname', 'mobile'])->first();
+        if (!is_null($persistentTopEntity)) {
+            $persistentTop = $persistentTopEntity->toArray();
+            $topInfo['persistent']['uid'] = $persistentTop['uid'];
+            $topInfo['persistent']['desc'] = sprintf('连续打卡%s次', $persistentTop['long_day_num']);
+        }
+        // todo 运气达人
+        $luckyTopKey = $this->topUserClockKey($yesterday);
+        if (Cache::has($luckyTopKey)) {
+            $cacheLuckyTopItem = Cache::get($luckyTopKey);
+            $cacheLuckyTopItem = json_decode($cacheLuckyTopItem, true);
+            $topInfo['lucky']['uid'] = $cacheLuckyTopItem['uid'];
+            $topInfo['lucky']['nickname'] = isset($cacheLuckyTopItem['nickname']) && $cacheLuckyTopItem['nickname'] ? $cacheLuckyTopItem['nickname'] : '';
+            $topInfo['lucky']['mobile'] = isset($cacheLuckyTopItem['mobile']) && $cacheLuckyTopItem['mobile'] ?
+                $this->saltTel($cacheLuckyTopItem['mobile']) : '';
+            $topInfo['lucky']['desc'] = sprintf('分到了%s元', $cacheLuckyTopItem['money']);
+        } else {
+            $luckyTopEntity = PayClockDay::query()->where('clock_status', PayClockDay::CLOCK_STATE_IN)
+                ->where('red_status', PayClockDay::RED_RELEASE_ON)->where('clock_day', $yesterday)
+                ->select(['uid', 'clock_money', 'nickname', 'mobile'])
+                ->orderBy('clock_money', 'desc')->first();
+            if (!is_null($luckyTopEntity)) {
+                $luckyTop = $luckyTopEntity->toArray();
+                $topInfo['lucky']['uid'] = $luckyTop['uid'];
+                $topInfo['lucky']['nickname'] = isset($luckyTop['nickname']) && $luckyTop['nickname'] ? $luckyTop['nickname'] : '';
+                $topInfo['lucky']['mobile'] = isset($luckyTop['mobile']) && $luckyTop['mobile'] ?
+                    $this->saltTel($luckyTop['mobile']) : '';
+                $topInfo['lucky']['desc'] = sprintf('分到了%s元', $luckyTop['clock_money'] / 100);
+            }
+        }
+        // todo 早起达人
+        $earlyTopEntity = PayClockDay::query()->where('clock_status', PayClockDay::CLOCK_STATE_IN)
+            ->where('clock_day', $yesterday)->orderBy('clock_time', 'asc')
+            ->select(['uid', 'clock_time', 'nickname', 'mobile'])->first();
+        if (!is_null($earlyTopEntity)) {
+            $earlyTop = $earlyTopEntity->toArray();
+            $topInfo['early']['uid'] = $earlyTop['uid'];
+            $topInfo['early']['nickname'] = isset($earlyTop['nickname']) && $earlyTop['nickname'] ? $earlyTop['nickname'] : '';
+            $topInfo['early']['mobile'] = isset($earlyTop['mobile']) && $earlyTop['mobile'] ? $this->saltTel($earlyTop['mobile']) : '';
+            $topInfo['early']['desc'] = sprintf('%s打卡', date('H:i:s', strtotime($earlyTop['clock_time'])));
+        }
+        Cache::add($topKey, array_values($topInfo), 10 * 60);
+
+        $this->data['talent'] = $topInfo;
+        return $this->pipeline();
+
+    }
+
+    /**
+     * 手机号处理
+     * @param $telephone
+     * @return string
+     */
+    public function saltTel($telephone)
+    {
+        return substr($telephone, 0, 3) . ' *** ' . substr($telephone, -4);
     }
 
     /**
