@@ -1110,7 +1110,7 @@ class ClockService extends BaseService
             ->limit($limit)->offset($offset)->select(['mobile', 'clock_day_num as clockDayCount', 'income_money as incomeMoney'])
             ->orderBy('income_money', 'desc')->get();
         if (is_null($recordEntities)) {
-            $this->data['talent'] = $tops;
+            $this->data['records'] = $tops;
             return $this->pipeline();
         }
         $recordItem = $recordEntities->toArray();
