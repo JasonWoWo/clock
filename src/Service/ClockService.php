@@ -1103,7 +1103,7 @@ class ClockService extends BaseService
         $recordQueryBuilder = PayClockUser::query()->where('mobile', '!=', '');
         $tops['total_counts'] = $recordQueryBuilder->count('*');
         if (empty($tops['total_counts'])) {
-            $this->data['talent'] = $tops;
+            $this->data['records'] = $tops;
             return $this->pipeline();
         }
         $recordEntities = PayClockUser::query()->where('mobile', '!=', '')
@@ -1137,17 +1137,18 @@ class ClockService extends BaseService
         }
         $yesterday = strtotime(date('Y-m-d', $this->systemCurrentTimestamp - self::DAY_TIMESTAMP));
         $topInfo = [
-            'persistent' => ['type' => 1, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => ''],
-            'lucky' => ['type' => 2, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => ''],
-            'early' => ['type' => 3, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => ''],
+            'persistent' => ['type' => 1, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => '虚席以待'],
+            'lucky' => ['type' => 2, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => '虚席以待'],
+            'early' => ['type' => 3, 'uid' => '', 'icon' => '', 'nickname' => '', 'desc' => '虚席以待'],
         ];
         // todo 毅力达人
-        $persistentTopEntity = PayClockUser::query()->where('long_day_num', 'gt', 0)
+        $persistentTopEntity = PayClockUser::query()->where('long_day_num', '>', 0)
             ->orderBy('long_day_num', 'desc')->orderBy('update_time', 'desc')
             ->select(['uid', 'long_day_num', 'nickname', 'mobile'])->first();
         if (!is_null($persistentTopEntity)) {
             $persistentTop = $persistentTopEntity->toArray();
             $topInfo['persistent']['uid'] = $persistentTop['uid'];
+            $topInfo['persistent']['nickname'] = $persistentTop['nickname'];
             $topInfo['persistent']['desc'] = sprintf('连续打卡%s次', $persistentTop['long_day_num']);
         }
         // todo 运气达人
