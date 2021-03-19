@@ -33,6 +33,70 @@ class ClockService extends BaseService
     }
 
     /**
+     * 用户未授权情况下的数据概览
+     * @return array
+     */
+    public function initSummary()
+    {
+        // 用户八点五分以前，看到都是昨日数据
+        $checkTime = strtotime(date('Y-m-d 08:05:00', $this->systemCurrentTimestamp));
+        $yesterday = strtotime(date('Y-m-d', strtotime('-1 day', $this->systemCurrentTimestamp)));
+        $summary = [
+            'clock_status' => PayClockDay::CLOCK_STATE_INIT, //  0未参与 1已参与 2已打卡
+            'user_num' => 0, // 参与人数
+            'clock_user_num' => 0, // 打卡成功人数
+            'clock_money' => 0, // 奖池金额
+            'clock_time' => 0, // 打卡的倒计时
+            'is_alert' => 0,
+            'is_start' => 0,
+            'yest_money' => 0,
+        ];
+        $yesterdayEntity = PayClock::query()->where('clock_day', $yesterday)->first();
+        // todo 当前时间 < 当日早上08:05分，同时，昨天有打卡数据，展示昨天的数据
+        if (time() < $checkTime && $yesterdayEntity) {
+            $start = strtotime('Y-m-d 05:00:00', $this->systemCurrentTimestamp);
+            $end = strtotime('Y-m-d 08:00:00', $this->systemCurrentTimestamp);
+            $isClockTime = $start - $this->systemCurrentTimestamp; // 是否能参与打卡倒计时，当isClockTime=0时候，不展示倒计时
+            // 昨日参加过的今日8点5分后才能参加下一轮，昨日未参加的今日参加不受任何限制
+            if ($this->systemCurrentTimestamp >= $start && $this->systemCurrentTimestamp <= $end) {
+                $isClockTime = 0;
+            }
+            $summary['clock_time'] = $isClockTime;
+            $clockEntity = PayClock::query()->where('clock_day', $yesterday)->select(['id', 'user_num', 'clock_money'])
+                ->first();
+            if (!is_null($clockEntity)) {
+                $clock = $clockEntity->toArray();
+                $summary['user_num'] = empty($clock['user_num']) ? 0 : $clock['user_num'];
+                $summary['clock_money'] = empty($clock['clock_money']) ? 0 : $clock['clock_money'];
+                $summary['yest_money'] = $summary['clock_money'];
+            }
+            $userClockInCounts = PayClockDay::query()->where(['clock_day' => $yesterday, 'clock_status' => PayClockDay::CLOCK_STATE_IN])->count();
+            $summary['clock_user_num'] = $userClockInCounts;
+            $this->data['summary'] = $summary;
+            return $this->pipeline();
+        }
+        // todo 获取今日的打卡数据
+        $summary['is_start'] = 1;
+        $isClockTime = strtotime(date('Y-m-d 05:00:00', strtotime('+1 day', $this->systemCurrentTimestamp))) - $this->systemCurrentTimestamp;
+        $summary['clock_time'] = $isClockTime;
+        // 昨日活动总金额
+        $yesterdayClockInfo = $this->yesterdayInfo();
+        $summary['yest_money'] = isset($yesterdayClockInfo['clock_money']) ? $yesterdayClockInfo['clock_money'] / 100 : 0;
+        $day = strtotime(date('Y-m-d', $this->systemCurrentTimestamp));
+        $clockEntity = PayClock::query()->where('clock_day', $day)->select(['id', 'user_num', 'clock_money'])
+            ->first();
+        if (!is_null($clockEntity)) {
+            $clock = $clockEntity->toArray();
+            $summary['user_num'] = $clock['user_num'];
+            $summary['clock_money'] = empty($clock['clock_money']) ? 0 : $clock['clock_money'] / 100;
+        }
+        $this->data['summary'] = $summary;
+
+        return $this->pipeline();
+
+    }
+
+    /**
      * 获取首页界面的数据情况
      * @param $uid
      * @param array $extra
@@ -840,19 +904,17 @@ class ClockService extends BaseService
             if (is_null($userEntity)) {
                 throw new \Exception("红包发放成功，未获取到用户信息");
             }
-            $isUpdateUser = PayClockUser::query()->where('uid', $clock['uid'])->increment('income_money', $money);
-            if (!$isUpdateUser) {
-                throw new \Exception("红包发放成功，更新用户记录总表失败, uid: {$clock['uid']}, income_money: {$money}, order_no: {$orderNo}");
-            }
             $user = $userEntity->toArray();
+            $clockUserUpdateParams = [
+                'update_time' => date('Y-m-d H:i:s'),
+                'income_money' => $user['income_money'] + $money
+            ];
             if ($user['clock_max_money'] < $money) {
-                $isUpdateUser = PayClockUser::query()->where('uid', $user['id'])->update([
-                    'clock_max_money' => $money,
-                    'update_time' => date('Y-m-d H:i:s')
-                ]);
-                if (!$isUpdateUser) {
-                    throw new \Exception( "红包发放成功，更新用户记录总表失败, uid: {$clock['uid']}, clock_max_money: {$money}, order_no: {$orderNo}");
-                }
+                $clockUserUpdateParams['clock_max_money'] = $money;
+            }
+            $isUpdateUser = PayClockUser::query()->where('id', $user['id'])->update($clockUserUpdateParams);
+            if (!$isUpdateUser) {
+                throw new \Exception( "红包发放成功，更新用户记录总表失败, uid: {$clock['uid']}, income_money: {$money}, clock_max_money: {$money}, order_no: {$orderNo}");
             }
             // 记录个人金额变动日志
             $content = sprintf("用户ID: %s 参与 %s 打卡活动红包发放：%s 元", $clock['uid'], date('Y-m-d', $clock['clock_day']), $redMoney);
@@ -965,7 +1027,7 @@ class ClockService extends BaseService
             return 0;
         }
         $key = $this->getUserClockRewardKey($clockDay, $uid);
-        $money = Cache::get($key);
+        $money = Cache::has($key) ? Cache::get($key) : 0;
         $money = $money > 98 ? 98 : $money;
 
         return $money < 0.01 ? 0 : $money * 100;

@@ -51,6 +51,15 @@ class ClockCenter
         return $this->clockService->checkUserClockStatus($uid);
     }
 
+    /**
+     * STEP-ONE 0 未授权下，打卡界面用户数据概览
+     * @return array
+     */
+    public function init()
+    {
+        return $this->clockService->initSummary();
+    }
+
 
     /**
      * STEP-ONE 1 打卡界面用户数据集合 原趣抽奖[api/ClockTen/clockUserDetail]
