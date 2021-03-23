@@ -181,7 +181,7 @@ class ClockService extends BaseService
     public function setClockUserAlert($uid)
     {
         $key = $this->getClockUserAlertKey($uid);
-        Cache::set($key, 1, 7 * 24 * 3600);
+        Cache::add($key, 1, 2 * 24 * 3600);
         $this->data['is_setting'] = 1;
         return $this->pipeline();
     }
@@ -194,12 +194,12 @@ class ClockService extends BaseService
     private function checkUserAlert($uid)
     {
         $key = $this->getClockUserAlertKey($uid);
-        return Cache::get($key) ? true : false;
+        return Cache::has($key) ? (Cache::get($key) ? true : false) : false;
     }
 
     private function getClockUserAlertKey($uid)
     {
-        $day = strtotime('Y-m-d', $this->systemCurrentTimestamp);
+        $day = date('Y_m_d', $this->systemCurrentTimestamp);
         return Config::get('clock.prefix_alert_key') . $uid . "_" . $day;
     }
 
@@ -245,7 +245,7 @@ class ClockService extends BaseService
         if (!is_null($clockEntity)) {
             $clock = $clockEntity->toArray();
             $summary['user_num'] = empty($clock['user_num']) ? 0 : $clock['user_num'];
-            $summary['clock_money'] = empty($clock['clock_money']) ? 0 : $clock['clock_money'];
+            $summary['clock_money'] = empty($clock['clock_money']) ? 0 : $clock['clock_money'] / 100;
             $summary['yest_money'] = $summary['clock_money'];
         }
         $userClockInCounts = PayClockDay::query()->where(['clock_day' => $day, 'clock_status' => PayClockDay::CLOCK_STATE_IN])->count();
