@@ -295,6 +295,7 @@ class ClockService extends BaseService
         $userItem = $userEntity->toArray();
         $info['spend_money'] = $userItem['spend_money'] / 100;
         $info['income_money'] = $userItem['income_money'] / 100;
+        $info['clock_day_num'] = $userItem['clock_day_num'];
         $this->data['info'] = $info;
         return $this->pipeline();
     }
