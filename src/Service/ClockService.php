@@ -292,8 +292,9 @@ class ClockService extends BaseService
                 return $this->pipeline();
             }
         }
-        $info['spend_money'] = $info['spend_money'] / 100;
-        $info['income_money'] = $info['income_money'] / 100;
+        $userItem = $userEntity->toArray();
+        $info['spend_money'] = $userItem['spend_money'] / 100;
+        $info['income_money'] = $userItem['income_money'] / 100;
         $this->data['info'] = $info;
         return $this->pipeline();
     }
