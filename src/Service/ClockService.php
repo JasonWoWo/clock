@@ -194,7 +194,7 @@ class ClockService extends BaseService
     private function checkUserAlert($uid)
     {
         $key = $this->getClockUserAlertKey($uid);
-        return Cache::has($key) ? (Cache::get($key) ? true : false) : false;
+        return Cache::has($key) ? Cache::get($key) : false;
     }
 
     private function getClockUserAlertKey($uid)
