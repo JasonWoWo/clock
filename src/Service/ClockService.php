@@ -1181,7 +1181,7 @@ class ClockService extends BaseService
         }
         $recordItem = $recordEntities->toArray();
         array_walk($recordItem, function (&$item) {
-            $item['phone'] = $this->saltTel($item['mobile']);
+            $item['mobile'] = $this->saltTel($item['mobile']);
         });
         $tops['items'] = $recordItem;
         $this->data['records'] = $tops;
