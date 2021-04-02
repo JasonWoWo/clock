@@ -441,14 +441,16 @@ class ClockService extends BaseService
     public function yesterdayClock($uid)
     {
         $yesterdayInfo = [
-            'clock_status' => PayClockDay::CLOCK_STATE_INIT
+            'clock_status' => PayClockDay::CLOCK_STATE_INIT,
+            'red_status' => PayClockDay::RED_RELEASE_OFF,
         ];
         $day = strtotime(date('Y-m-d', strtotime('-1 day', $this->systemCurrentTimestamp)));
         $clockDayEntity = PayClockDay::query()->where(['uid' => $uid, 'clock_day' => $day])
-            ->select(['id', 'clock_status'])->first();
+            ->select(['id', 'clock_status', 'red_status'])->first();
         if (!is_null($clockDayEntity)) {
             $clockDay = $clockDayEntity->toArray();
             $yesterdayInfo['clock_status'] = $clockDay['clock_status'];
+            $yesterdayInfo['red_status'] = $clockDay['red_status'];
         }
         $this->data['yesterday'] = $yesterdayInfo;
         return $this->pipeline();
@@ -1179,7 +1181,7 @@ class ClockService extends BaseService
         }
         $recordItem = $recordEntities->toArray();
         array_walk($recordItem, function (&$item) {
-            $item['mobile'] = $this->saltTel($item['mobile']);
+            $item['phone'] = $this->saltTel($item['mobile']);
         });
         $tops['items'] = $recordItem;
         $this->data['records'] = $tops;
